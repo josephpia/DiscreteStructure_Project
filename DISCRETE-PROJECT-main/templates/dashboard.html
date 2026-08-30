@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LBSADMS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .dashboard-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: var(--gray-100);
+            border-radius: var(--radius-md);
+        }
+        .user-info h2 { color: var(--primary-dark); margin-bottom: 5px; }
+        .badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: var(--radius-full);
+            font-size: 12px;
+            font-weight: 600;
+            margin-right: 5px;
+        }
+        .badge.admin { background: #ffebee; color: #c62828; }
+        .badge.faculty { background: #e3f2fd; color: #1565c0; }
+        .badge.staff { background: #f3e5f5; color: #6a1b9a; }
+        .badge.student { background: #e8f5e9; color: #2e7d32; }
+        .badge.visitor { background: #fff3e0; color: #e65100; }
+        .facility-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .facility-card {
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            transition: all 0.3s ease;
+            box-shadow: var(--shadow-sm);
+        }
+        .facility-card:hover {
+            transform: translateY(-4px);
+            box-shadow: var(--shadow-md);
+            border-color: var(--primary-light);
+        }
+        .facility-card .facility-icon { font-size: 32px; margin-bottom: 10px; }
+        .facility-card h3 { color: var(--primary-dark); margin-bottom: 5px; }
+        .facility-card .facility-type { font-size: 13px; color: var(--gray-600); margin-bottom: 10px; }
+        .facility-card .facility-level {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: var(--radius-full);
+            background: var(--gray-200);
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .facility-card .access-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            text-align: center;
+            background: #d4edda;
+            color: #155724;
+        }
+        .no-facilities { text-align: center; padding: 40px; color: var(--gray-600); }
+        .quick-actions-dashboard { display: flex; gap: 15px; flex-wrap: wrap; }
+        .quick-actions-dashboard a {
+            padding: 10px 20px;
+            border-radius: var(--radius-full);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .btn-check-access { background: var(--primary-gradient); color: white; }
+        .btn-check-access:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(26, 58, 107, 0.3); }
+        .btn-logout { background: #dc3545; color: white; }
+        .btn-logout:hover { background: #c82333; transform: translateY(-2px); }
+        .btn-login { background: var(--primary-medium); color: white; }
+        .btn-login:hover { transform: translateY(-2px); box-shadow: 0 4px 15px rgba(42, 82, 152, 0.3); }
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+        }
+        .data-table thead { background: var(--primary-gradient); color: white; }
+        .data-table thead th { padding: 12px 16px; text-align: left; font-weight: 600; font-size: 13px; }
+        .data-table tbody td { padding: 10px 16px; border-bottom: 1px solid var(--gray-200); }
+        .data-table tbody tr:hover { background: var(--gray-100); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LBSADMS</h1>
+            <p class="subtitle">Your Access Dashboard</p>
+        </header>
+
+        <nav>
+            <a href="/dashboard" class="active">Dashboard</a>
+        </nav>
+
+        <div class="main-content">
+            <div class="dashboard-header">
+                <div class="user-info">
+                    <h2>Welcome, {{ user.name }}!</h2>
+                    <p style="color: var(--gray-600);">
+                        Card ID: <strong>{{ user.card_number }}</strong> | 
+                        Type: <span class="badge {{ user.user_type }}">{{ user.user_type|upper }}</span> |
+                        Access Level: <strong>{{ user.access_level }}</strong>
+                    </p>
+                    <p style="color: var(--gray-600); font-size: 14px;">
+                        Unique ID: <code style="background: #f0f0f0; padding: 2px 8px; border-radius: 4px;">{{ user.unique_id }}</code>
+                    </p>
+                </div>
+                <div class="quick-actions-dashboard">
+                    <a href="/logout" class="btn-logout">Logout</a>
+                </div>
+            </div>
+
+            <h2 style="color: var(--primary-dark);">Your Accessible Facilities</h2>
+            <p style="color: var(--gray-600); margin-bottom: 20px;">
+                You have access to <strong>{{ allowed_facilities|length }}</strong> facility(ies)
+            </p>
+
+            {% if allowed_facilities %}
+            <div class="facility-grid">
+                {% for facility in allowed_facilities %}
+                <div class="facility-card">
+                    <div class="facility-icon">
+                        {% if facility.facility_type == 'Venue' %}
+                        {% elif facility.facility_type == 'Office' %}
+                        {% elif facility.facility_type == 'classroom' %}
+                        {% elif facility.facility_type == 'Lab' %}
+                        {% elif facility.facility_type == 'library' %}
+                        {% elif facility.facility_type == 'restricted' %}
+                        {% else %}
+                        {% endif %}
+                    </div>
+                    <h3>{{ facility.name }}</h3>
+                    <p class="facility-type">Type: {{ facility.facility_type|capitalize }}</p>
+                    <span class="facility-level">Level {{ facility.required_access_level }}</span>
+                    {% if facility.is_restricted %}
+                    <span class="facility-level" style="background: #ffebee; color: #c62828;"> Restricted</span>
+                    {% endif %}
+                    <div class="access-status">✅ Access Granted</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="no-facilities">
+                <h3>No Accessible Facilities</h3>
+                <p>You don't have access to any facilities at this time.</p>
+                <p style="font-size: 14px; color: var(--gray-600);">Contact an administrator for access.</p>
+            </div>
+            {% endif %}
+
+            <!-- Access Log -->
+            <div style="margin-top: 40px;">
+                <h2 style="color: var(--primary-dark);">📋 Your Recent Access Activity</h2>
+                <div style="max-height: 200px; overflow-y: auto;">
+                    {% if access_log %}
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Facility</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for log in access_log|reverse %}
+                            {% if log.card_number == user.card_number %}
+                            <tr>
+                                <td>{{ log.timestamp[:19].replace('T', ' ') }}</td>
+                                <td>{{ log.facility_name }}</td>
+                                <td>
+                                    {% if log.granted %}
+                                    <span style="color: #28a745;">Granted</span>
+                                    {% else %}
+                                    <span style="color: #dc3545;">Denied</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endif %}
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                    {% else %}
+                    <p style="text-align: center; padding: 20px; color: var(--gray-600);">No access attempts logged yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>LBSADMS - Midterm Project | Access Control System</p>
+            <div class="footer-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/access_check">Check Access</a>
+                <a href="/login">Login</a>
+                {% if user.user_type == 'admin' %}
+                <a href="/admin">Admin</a>
+                {% endif %}
+                <a href="/logout">Logout</a>
+            </div>
+        </footer>
+    </div>
+</body>
+</html>

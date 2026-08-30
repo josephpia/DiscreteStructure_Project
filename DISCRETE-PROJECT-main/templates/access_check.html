@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Access - LBSADMS</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        .access-form {
+            max-width: 600px;
+            margin: 0 auto 32px;
+            padding: 32px;
+            background: var(--white);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--gray-200);
+        }
+        .access-form h2 { text-align: center; color: var(--primary-dark); margin-bottom: 24px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 6px; font-weight: 500; color: var(--gray-700); }
+        .form-group select, .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--gray-300);
+            border-radius: var(--radius-sm);
+            font-size: var(--font-base);
+            background: var(--white);
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%236c757d' stroke-width='2' fill='none'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+        .form-group select:focus, .form-group input:focus {
+            outline: none;
+            border-color: var(--primary-medium);
+            box-shadow: 0 0 0 4px rgba(42, 82, 152, 0.1);
+        }
+        .card-input {
+            font-size: 20px;
+            padding: 12px 16px;
+            text-align: center;
+            letter-spacing: 4px;
+            font-weight: bold;
+        }
+        .btn-check {
+            width: 100%;
+            padding: 14px;
+            font-size: 18px;
+            font-weight: 600;
+            background: var(--primary-gradient);
+            color: var(--white);
+            border: none;
+            border-radius: var(--radius-md);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-check:hover { transform: translateY(-2px); box-shadow: 0 6px 25px rgba(26, 58, 107, 0.4); }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 12px 20px;
+            border-radius: var(--radius-sm);
+            margin-bottom: 20px;
+            border-left: 4px solid #dc3545;
+        }
+        .result-header { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .result-card {
+            background: var(--white);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            border: 1px solid var(--gray-200);
+            margin-bottom: 32px;
+            padding: 20px;
+        }
+        .access-decision { text-align: center; padding: 20px; }
+        .decision {
+            font-size: var(--font-2xl);
+            font-weight: 700;
+            padding: 16px 32px;
+            border-radius: var(--radius-md);
+            display: inline-block;
+            letter-spacing: 1px;
+        }
+        .decision.granted { background: linear-gradient(135deg, #d4edda, #b7ebc5); color: #155724; }
+        .decision.denied { background: linear-gradient(135deg, #f8d7da, #f5c6cb); color: #721c24; }
+        .user-info, .facility-info { padding: 15px; background: var(--gray-100); border-radius: var(--radius-sm); }
+        .user-info h3, .facility-info h3 { color: var(--primary-dark); margin-bottom: 10px; }
+        .user-info p, .facility-info p { margin: 5px 0; font-size: 14px; }
+        .user-info .label, .facility-info .label { font-weight: 600; color: var(--gray-700); }
+        @media (max-width: 768px) { .result-header { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>LBSADMS</h1>
+            <p class="subtitle">Check Access</p>
+            <span class="badge" style="background: rgba(255,255,255,0.15); color: white; padding: 4px 16px; border-radius: 50px;">
+                Logged in as: {{ session.user_name if session.user_name else 'Not logged in' }}
+            </span>
+        </header>
+
+        <nav>
+            <a href="/access_check" class="active">Check Access</a>
+        </nav>
+
+        <div class="main-content">
+            <div class="access-form">
+                <h2>Check Facility Access</h2>
+                <p style="text-align: center; color: var(--gray-600); margin-bottom: 20px;">
+                    Enter your Card ID and select a facility to check access
+                </p>
+                
+                {% if error %}
+                <div class="error-message">{{ error }}</div>
+                {% endif %}
+                
+                <form method="POST" action="/access_check">
+                    <div class="form-group">
+                        <label for="card_number">Card ID:</label>
+                        <input type="text" name="card_number" id="card_number" class="card-input"
+                               placeholder="Enter Card ID" maxlength="10"
+                               value="{{ session.card_number or '' }}" required>
+                        <div style="text-align: center; margin-top: 5px;">
+                            <small style="color: var(--gray-600);">
+                                Your Card ID: <strong>{{ session.card_number or 'Not set' }}</strong>
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="facility_id">Select Facility:</label>
+                        <select name="facility_id" id="facility_id" required>
+                            <option value="">-- Select a Facility --</option>
+                            {% for facility in facilities %}
+                            <option value="{{ facility.facility_id }}">
+                                {{ facility.name }} (Level {{ facility.required_access_level }})
+                                {% if facility.is_restricted %}{% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn-check">Check Access</button>
+                </form>
+            </div>
+
+            {% if user %}
+            <div class="result-section">
+                <h2>Access Result</h2>
+                <div class="result-card">
+                    <div class="result-header">
+                        <div class="user-info">
+                            <h3>👤 User: {{ user.name }}</h3>
+                            <p><span class="label">Card ID:</span> <strong>{{ user.card_number }}</strong></p>
+                            <p><span class="label">Type:</span> {{ user.user_type.capitalize() }}</p>
+                            <p><span class="label">Access Level:</span> {{ user.access_level }}</p>
+                            <p><span class="label">Authorized:</span> {{ ' Yes' if user.is_authorized else 'No' }}</p>
+                        </div>
+                        <div class="facility-info">
+                            <h3>Facility: {{ facility.name }}</h3>
+                            <p><span class="label">Type:</span> {{ facility.facility_type.capitalize() }}</p>
+                            <p><span class="label">Required Level:</span> {{ facility.required_access_level }}</p>
+                            <p><span class="label">Restricted:</span> {{ ' Yes' if facility.is_restricted else 'No' }}</p>
+                        </div>
+                    </div>
+                    
+                    <div class="access-decision">
+                        <h3>Access Decision:</h3>
+                        <div class="decision {{ 'granted' if has_access else 'denied' }}">
+                            {{ 'ACCESS GRANTED' if has_access else 'ACCESS DENIED' }}
+                        </div>
+                        {% if has_access %}
+                        <p style="margin-top: 10px; color: #28a745; font-weight: 500;">
+                            Welcome, {{ user.name }}! You may enter {{ facility.name }}.
+                        </p>
+                        {% else %}
+                        <p style="margin-top: 10px; color: #dc3545; font-weight: 500;">
+                            Access Denied. You don't have permission to enter {{ facility.name }}.
+                        </p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <footer>
+            <p>LBSADMS - Midterm Project | Access Control System</p>
+            <div class="footer-links">
+                <a href="/dashboard">Dashboard</a>
+                <a href="/access_check">Check Access</a>
+                <a href="/login">Login</a>
+                {% if session.user_type == 'admin' %}
+                <a href="/admin">Admin</a>
+                {% endif %}
+                <a href="/logout">Logout</a>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const cardInput = document.getElementById('card_number');
+            if (cardInput && !cardInput.value) cardInput.focus();
+        });
+    </script>
+</body>
+</html>
