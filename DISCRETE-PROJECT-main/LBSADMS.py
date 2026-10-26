@@ -101,7 +101,6 @@ class Facility:
     def __repr__(self):
         return f"Facility({self.name}, {self.facility_type}, Level: {self.required_access_level})"
 
-
 class PermissionMatrix:
     """Manages access permissions using matrices"""
     
